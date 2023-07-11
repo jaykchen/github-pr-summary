@@ -217,8 +217,11 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
         }
     }
     for (_i, review) in reviews.iter().enumerate() {
+        let heading = review.lines().take(1).collect::<Vec<&str>>().join("");
+        let body = review.lines().skip(1).collect::<Vec<&str>>().join("\n");
+        resp.push_str(&heading);
         resp.push_str("<details>");
-        resp.push_str(review);
+        resp.push_str(&body);
         resp.push_str("</details>\n");
     }
 
