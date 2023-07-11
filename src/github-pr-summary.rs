@@ -161,6 +161,7 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
     openai.set_retry_times(3);
 
     let mut reviews: Vec<String> = Vec::new();
+    let mut reviews_md_str: Vec<String> = Vec::new();
     let mut reviews_text = String::new();
     for (_i, commit) in commits.iter().enumerate() {
         let commit_hash = &commit[5..45];
@@ -184,7 +185,11 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
                 review.push_str(&format!("### [Commit {commit_hash}](https://github.com/WasmEdge/WasmEdge/pull/{pull_number}/commits/{commit_hash})\n"));
                 review.push_str(&r.choice);
                 review.push_str("\n\n");
-                reviews.push(review);
+                reviews.push(review.clone());
+                let formatted_review = format!(
+                    r#"<details><summary><a href=https://github.com/{owner}/{repo}/pull/{pull_number}/commits/{commit_hash}>Commit {commit_hash}</a></summary>
+                {review}</details>"#);
+                reviews_md_str.push(formatted_review);
                 log::debug!("Received OpenAI resp for patch: {}", commit_hash);
             }
             Err(e) => {
@@ -216,13 +221,8 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
             }
         }
     }
-    for (_i, review) in reviews.iter().enumerate() {
-        let heading = review.lines().take(1).collect::<Vec<&str>>().join("");
-        let body = review.lines().skip(1).collect::<Vec<&str>>().join("\n");
-        resp.push_str(&heading);
-        resp.push_str("<details>");
-        resp.push_str(&body);
-        resp.push_str("</details>\n");
+    for (_i, review) in reviews_md_str.iter().enumerate() {
+        resp.push_str(review);
     }
 
     // Send the entire response to GitHub PR
@@ -241,3 +241,5 @@ fn truncate(s: &str, max_chars: usize) -> &str {
         Some((idx, _)) => &s[..idx],
     }
 }
+
+
