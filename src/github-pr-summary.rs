@@ -188,8 +188,10 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
                 reviews.push(review.clone());
                 let formatted_review = format!(
                     r#"<details>
-        <summary><a href=\"https://github.com/{owner}/{repo}/pull/{pull_number}/commits/{commit_hash}\">Commit {commit_hash}</a></summary>
-                {review}</details>"#);
+        <summary><a href=\"https://github.com/{}/{}/pull/{}/commits/{}\">Commit {}</a></summary>
+                {}</details>"#,
+                    owner, repo, pull_number, commit_hash, commit_hash, review
+                );
                 reviews_md_str.push(formatted_review);
                 log::debug!("Received OpenAI resp for patch: {}", commit_hash);
             }
@@ -242,5 +244,3 @@ fn truncate(s: &str, max_chars: usize) -> &str {
         Some((idx, _)) => &s[..idx],
     }
 }
-
-
