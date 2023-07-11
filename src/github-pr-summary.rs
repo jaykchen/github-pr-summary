@@ -182,7 +182,7 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
                     reviews_text.push_str("\n");
                 }
                 let mut review = String::new();
-                review.push_str(&format!("### [Commit {commit_hash}](https://github.com/WasmEdge/WasmEdge/pull/{pull_number}/commits/{commit_hash})\n"));
+                // review.push_str(&format!("### [Commit {commit_hash}](https://github.com/WasmEdge/WasmEdge/pull/{pull_number}/commits/{commit_hash})\n"));
                 review.push_str(&r.choice);
                 review.push_str("\n\n");
                 reviews.push(review.clone());
