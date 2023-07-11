@@ -4,7 +4,7 @@ use github_flows::{
     get_octo, listen_to_event,
     octocrab::models::events::payload::{IssueCommentEventAction, PullRequestEventAction},
     octocrab::models::CommentId,
-    EventPayload, GithubLogin
+    EventPayload, GithubLogin,
 };
 use openai_flows::{
     chat::{ChatModel, ChatOptions},
@@ -14,9 +14,9 @@ use std::env;
 
 //  The soft character limit of the input context size
 //   the max token size or word count for GPT4 is 8192
-//   the max token size or word count for GPT35Turbo is 4096
-static CHAR_SOFT_LIMIT : usize = 9000;
-static MODEL : ChatModel = ChatModel::GPT35Turbo;
+//   the max token size or word count for GPT35Turbo16K is 16384
+static CHAR_SOFT_LIMIT: usize = 30000;
+static MODEL: ChatModel = ChatModel::GPT35Turbo16K;
 // static MODEL : ChatModel = ChatModel::GPT4;
 
 #[no_mangle]
@@ -32,25 +32,15 @@ pub async fn run() -> anyhow::Result<()> {
 
     let events = vec!["pull_request", "issue_comment"];
     listen_to_event(&GithubLogin::Default, &owner, &repo, events, |payload| {
-        handler(
-            &owner,
-            &repo,
-            &trigger_phrase,
-            payload,
-        )
+        handler(&owner, &repo, &trigger_phrase, payload)
     })
     .await;
 
     Ok(())
 }
 
-async fn handler(
-    owner: &str,
-    repo: &str,
-    trigger_phrase: &str,
-    payload: EventPayload,
-) {
-    let mut new_commit : bool = false;
+async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPayload) {
+    let mut new_commit: bool = false;
     let (title, pull_number, _contributor) = match payload {
         EventPayload::PullRequestEvent(e) => {
             if e.action == PullRequestEventAction::Opened {
@@ -105,7 +95,10 @@ async fn handler(
         match issues.list_comments(pull_number).send().await {
             Ok(comments) => {
                 for c in comments.items {
-                    if c.body.unwrap_or_default().starts_with("Hello, I am a [code review bot]") {
+                    if c.body
+                        .unwrap_or_default()
+                        .starts_with("Hello, I am a [code review bot]")
+                    {
                         comment_id = c.id;
                         break;
                     }
@@ -128,7 +121,9 @@ async fn handler(
             }
         }
     }
-    if comment_id == 0u64.into() { return; }
+    if comment_id == 0u64.into() {
+        return;
+    }
 
     let pulls = octo.pulls(owner, repo);
     let patch_as_text = pulls.get_patch(pull_number).await.unwrap();
@@ -174,6 +169,8 @@ async fn handler(
             model: MODEL,
             restart: true,
             system_prompt: Some(system),
+            max_tokens: Some(200),
+            ..Default::default()
         };
         let question = "The following is a GitHub patch. Please summarize the key changes and identify potential problems. Start with the most important findings.\n\n".to_string() + truncate(commit, CHAR_SOFT_LIMIT);
         match openai.chat_completion(&chat_id, &question, &co).await {
@@ -204,6 +201,8 @@ async fn handler(
             model: MODEL,
             restart: true,
             system_prompt: Some(system),
+            max_tokens: Some(4000),
+            ..Default::default()
         };
         let question = "Here is a set of summaries for software source code patches. Each summary starts with a ------ line. Please write an overall summary considering all the individual summary. Please present the potential issues and errors first, following by the most important findings, in your summary.\n\n".to_string() + &reviews_text;
         match openai.chat_completion(&chat_id, &question, &co).await {
@@ -218,7 +217,9 @@ async fn handler(
         }
     }
     for (_i, review) in reviews.iter().enumerate() {
+        resp.push_str("<details>");
         resp.push_str(review);
+        resp.push_str("</details>\n");
     }
 
     // Send the entire response to GitHub PR
