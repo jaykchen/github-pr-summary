@@ -188,7 +188,7 @@ async fn handler(owner: &str, repo: &str, trigger_phrase: &str, payload: EventPa
                 reviews.push(review.clone());
                 let formatted_review = format!(
                     r#"<details>
-        <summary><a href="https://github.com/{owner}/{repo}/pull/{pull_number}/commits/{commit_hash}">Commit {commit_hash}</a></summary>
+        <summary><a href=`https://github.com/{owner}/{repo}/pull/{pull_number}/commits/{commit_hash}`>Commit {commit_hash}</a></summary>
                 {review}</details>"#);
                 reviews_md_str.push(formatted_review);
                 log::debug!("Received OpenAI resp for patch: {}", commit_hash);
